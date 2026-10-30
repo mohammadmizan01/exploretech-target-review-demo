@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ExploreTech Demo — Target Review Console</title>
+<style>
+  :root{
+    --sand:#f4eee1; --card:#fffdf7; --ink:#3a2e25; --muted:#8a7a68;
+    --copper:#b87333; --copper-dark:#7c4f22; --copper-light:#e8c99b;
+    --earth:#6b5b47; --line:#e2d6bd; --good:#4d7c4f; --warn:#b03a2e;
+    --dim:#cdbfa5;
+  }
+  *{box-sizing:border-box}
+  body{font-family:Georgia,'Times New Roman',serif;background:var(--sand);color:var(--ink);margin:0;padding:0 0 60px}
+  header{background:#2e2419;color:#f4eee1;padding:18px 28px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  header h1{font-size:22px;margin:0;letter-spacing:.5px}
+  header .sub{font-size:13px;color:var(--copper-light);font-style:italic}
+  header .spacer{flex:1}
+  .role-switch{background:#463822;border:1px solid var(--copper);border-radius:8px;padding:6px 10px;color:#f4eee1;font-family:inherit}
+  .role-switch select{background:#2e2419;color:#f4eee1;border:1px solid var(--copper);border-radius:5px;padding:5px 8px;font-family:inherit}
+  .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;background:var(--copper-light);color:var(--copper-dark);font-weight:bold}
+  .badge.ro{background:#e8d9c4;color:#7c6a52}
+  .badge.drill{background:#dceadc;color:var(--good)}
+  .badge.hold{background:#f3e6c8;color:#8a6d1f}
+  .badge.drop{background:#f0d3cd;color:var(--warn)}
+  .badge.qual{background:var(--copper);color:#fff}
+  main{max-width:1180px;margin:0 auto;padding:20px 18px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+  .stat{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--copper);border-radius:8px;padding:12px 14px}
+  .stat .n{font-size:26px;font-weight:bold;color:var(--copper-dark)}
+  .stat .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+  .panel h2{margin:0 0 10px;font-size:17px;color:var(--copper-dark)}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .controls input[type=text]{padding:8px 12px;border:1px solid var(--line);border-radius:6px;font-family:inherit;min-width:220px;background:#fff}
+  .controls select{padding:8px;border:1px solid var(--line);border-radius:6px;font-family:inherit;background:#fff}
+  .toggle{display:flex;align-items:center;gap:6px;font-size:14px}
+  .cutoff-wrap{display:flex;align-items:center;gap:10px;flex:1;min-width:260px}
+  .cutoff-wrap input[type=range]{flex:1;accent-color:var(--copper)}
+  .cutoff-val{font-weight:bold;color:var(--copper-dark);min-width:64px}
+  .charts{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:860px){.charts{grid-template-columns:1fr}}
+  canvas.chart{width:100%;height:260px;background:#fbf7ec;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+  .hint{font-size:12px;color:var(--muted);font-style:italic;margin-top:6px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left}
+  th{background:#efe5cf;color:var(--copper-dark);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+  tr.qual-row td{background:#fdf6e9}
+  tr:hover td{background:#f9f2e2}
+  .pg{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:10px;font-size:14px}
+  .pg button,.btn{padding:7px 14px;border-radius:6px;border:1px solid var(--copper);background:var(--copper);color:#fff;font-family:inherit;cursor:pointer}
+  .pg button:disabled{background:var(--dim);border-color:var(--dim);cursor:not-allowed}
+  .btn.ghost{background:transparent;color:var(--copper-dark)}
+  .btn:disabled{background:var(--dim);border-color:var(--dim);cursor:not-allowed}
+  .detail{background:#2e2419;color:#f4eee1;border-radius:10px;padding:18px}
+  .detail h2{color:var(--copper-light)}
+  .detail .row{display:flex;gap:24px;flex-wrap:wrap;margin:8px 0;font-size:14px}
+  .detail .actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+  .detail .ro-note{background:#463822;border:1px dashed var(--copper-light);border-radius:6px;padding:10px;font-size:13px;color:var(--copper-light)}
+  .checklist li{margin:6px 0;font-size:14px;list-style:none}
+  .checklist{padding-left:0}
+  .checklist input{accent-color:var(--copper);margin-right:8px}
+  .progress{height:14px;background:#e9dfc8;border-radius:8px;overflow:hidden;margin-top:10px}
+  .progress>div{height:100%;background:linear-gradient(90deg,var(--copper),var(--copper-dark));width:0%;transition:width .4s}
+  .skeleton{padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--card);margin-bottom:10px}
+  .sk{height:16px;border-radius:6px;background:linear-gradient(90deg,#e9dfc8 25%,#f6efdd 50%,#e9dfc8 75%);background-size:200% 100%;animation:sh 1.2s infinite;margin:8px 0}
+  @keyframes sh{to{background-position:-200% 0}}
+  .empty{text-align:center;padding:40px;color:var(--muted);font-style:italic}
+  .errorbox{text-align:center;padding:36px;border:1px dashed var(--warn);border-radius:10px;background:#fdf1ef;color:var(--warn)}
+  .footer-note{margin-top:28px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px;text-align:center}
+  .flagbtn{border:none;background:none;cursor:pointer;font-size:16px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>⛏ Target Review Console</h1>
+    <div class="sub">Drill-target prioritisation workspace — demo build</div>
+  </div>
+  <div class="spacer"></div>
+  <span id="roleBadge" class="badge">Geologist · can act</span>
+  <label class="role-switch">Role:
+    <select id="roleSel">
+      <option value="geo">Geologist (acts)</option>
+      <option value="viewer">Viewer (read-only)</option>
+    </select>
+  </label>
+  <button class="btn ghost" id="failBtn" style="color:#f4eee1;border-color:#f4eee1">Simulate API failure</button>
+</header>
+
+<main>
+  <div id="errorZone"></div>
+  <div id="loadingZone"></div>
+  <div id="appZone" style="display:none">
+
+    <section class="stats" id="statsStrip"></section>
+
+    <section class="panel">
+      <h2>Review checklist</h2>
+      <ul class="checklist" id="checklist"></ul>
+      <div class="progress"><div id="progFill"></div></div>
+      <div id="progLabel" style="font-size:13px;color:var(--muted);margin-top:4px"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Controls</h2>
+      <div class="controls">
+        <input type="text" id="search" placeholder="Search targets (e.g. T-04)…">
+        <select id="statusFilter">
+          <option value="">All statuses</option>
+          <option value="candidate">Candidate</option>
+          <option value="drill-ready">Drill-ready</option>
+          <option value="on-hold">On-hold</option>
+          <option value="dropped">Dropped</option>
+        </select>
+        <label class="toggle"><input type="checkbox" id="flaggedOnly"> Flagged only</label>
+        <div class="cutoff-wrap">
+          <label for="cutoff">Cut-off grade:</label>
+          <input type="range" id="cutoff" min="0.2" max="1.2" step="0.05" value="0.5">
+          <span class="cutoff-val" id="cutoffVal">0.50%</span>
+        </div>
+      </div>
+      <div class="hint">Moving the cut-off slider instantly re-ranks targets and re-highlights the scatter plot — the review question is which targets earn drilling budget first.</div>
+    </section>
+
+    <section class="panel">
+      <h2>Grade overview — charts</h2>
+      <div class="charts">
+        <div>
+          <canvas class="chart" id="barChart" height="260"></canvas>
+          <div class="hint">Bar chart: grade per target. Copper bars clear the cut-off; dimmed bars fall below.</div>
+        </div>
+        <div>
+          <canvas class="chart" id="scatter" height="260"></canvas>
+          <div class="hint">Scatter: tonnage vs grade (dot size = probability). Click a point to open its review card. Highlighted dots clear the cut-off.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Target table</h2>
+      <div id="tableWrap"></div>
+      <div class="pg">
+        <button id="prevPg">← Prev</button>
+        <span id="pgInfo"></span>
+        <button id="nextPg">Next →</button>
+      </div>
+    </section>
+
+    <section class="detail" id="detailPanel" style="display:none">
+      <h2 id="dTitle"></h2>
+      <div class="row" id="dMeta"></div>
+      <div class="actions" id="dActions"></div>
+      <div class="ro-note" id="roNote" style="display:none;margin-top:10px">Viewer role is read-only — actions are disabled. Switch to Geologist to act.</div>
+    </section>
+
+    <div class="footer-note">
+      Demo data only — illustrative drill targets, no real projects, locations or geological data; no integration with ExploreTech.
+    </div>
+  </div>
+</main>
+
+<script>
+(function(){
+  "use strict";
+  // ---------- Fictional demo data ----------
+  var TARGETS = [
+    {id:"T-01", grade:0.92, tonnage:42.5, prob:0.81, status:"candidate",  reviewed:true,  flagged:false, note:"Strong cluster on anomaly A."},
+    {id:"T-02", grade:0.41, tonnage:18.2, prob:0.55, status:"candidate",  reviewed:false, flagged:true,  note:"Needs infill data before call."},
+    {id:"T-03", grade:1.15, tonnage:9.8,  prob:0.88, status:"drill-ready",reviewed:true,  flagged:false, note:"Top-ranked; trajectory modelled."},
+    {id:"T-04", grade:0.28, tonnage:63.0, prob:0.47, status:"candidate",  reviewed:false, flagged:false, note:"Large footprint, low grade."},
+    {id:"T-05", grade:0.66, tonnage:27.4, prob:0.72, status:"on-hold",    reviewed:true,  flagged:true,  note:"Paused pending survey licence."},
+    {id:"T-06", grade:0.53, tonnage:12.1, prob:0.60, status:"candidate",  reviewed:false, flagged:false, note:"Twin anomaly, small footprint."},
+    {id:"T-07", grade:1.02, tonnage:15.6, prob:0.77, status:"candidate",  reviewed:false, flagged:true,  note:"Deep target; cost review needed."},
+    {id:"T-08", grade:0.35, tonnage:31.9, prob:0.52, status:"candidate",  reviewed:true,  flagged:false, note:"Edge of survey grid."},
+    {id:"T-09", grade:0.74, tonnage:22.3, prob:0.69, status:"drill-ready",reviewed:true,  flagged:false, note:"Second rig slot approved."},
+    {id:"T-10", grade:0.22, tonnage:48.7, prob:0.40, status:"dropped",    reviewed:true,  flagged:false, note:"Below economic threshold."},
+    {id:"T-11", grade:0.85, tonnage:19.9, prob:0.74, status:"candidate",  reviewed:false, flagged:false, note:"New inversion run pending."},
+    {id:"T-12", grade:0.58, tonnage:25.0, prob:0.63, status:"candidate",  reviewed:false, flagged:true,  note:"Conflicting survey results."}
+  ];
+
+  var state = {
+    cutoff: 0.5, search: "", statusFilter: "", flaggedOnly: false,
+    page: 0, pageSize: 5, role: "geo", selected: null, failed: false
+  };
+
+  var $ = function(id){ return document.getElementById(id); };
+  var appZone=$("appZone"), loadingZone=$("loadingZone"), errorZone=$("errorZone");
+
+  function qualifies(t){ return t.grade >= state.cutoff; }
+  function score(t){ return qualifies(t) ? t.grade*t.prob : -1; }
+
+  function filtered(){
+    var q = state.search.trim().toLowerCase();
+    return TARGETS
+      .filter(function(t){
+        if(q && t.id.toLowerCase().indexOf(q)<0 && (t.note||"").toLowerCase().indexOf(q)<0) return false;
+        if(state.statusFilter && t.status!==state.statusFilter) return false;
+        if(state.flaggedOnly && !t.flagged) return false;
+        return true;
+      })
+      .sort(function(a,b){ return score(b)-score(a); });
+  }
+
+  // ---------- Stats ----------
+  function renderStats(list){
+    var qual = list.filter(qualifies);
+    var flagged = list.filter(function(t){return t.flagged;});
+    var drill = list.filter(function(t){return t.status==="drill-ready";});
+    var avg = qual.length ? (qual.reduce(function(s,t){return s+t.grade;},0)/qual.length).toFixed(2) : "—";
+    $("statsStrip").innerHTML =
+      stat(list.length,"Targets in view") +
+      stat(qual.length,"Above "+state.cutoff.toFixed(2)+"% cut-off") +
+      stat(avg+"%","Avg grade (above cut-off)") +
+      stat(drill.length,"Drill-ready") +
+      stat(flagged.length,"Flagged for review");
+  }
+  function stat(n,l){ return '<div class="stat"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>'; }
+
+  // ---------- Checklist + progress ----------
+  function renderChecklist(){
+    var rev = TARGETS.filter(function(t){return t.reviewed;}).length;
+    var items = [
+      {label:"Cut-off grade set ("+state.cutoff.toFixed(2)+"%)", done:true},
+      {label:"All "+TARGETS.length+" targets reviewed ("+rev+" done)", done:rev===TARGETS.length},
+      {label:"Every flagged target has a decision (not Candidate)", done:TARGETS.filter(function(t){return t.flagged;}).every(function(t){return t.status!=="candidate";})},
+      {label:"At least one drill-ready target", done:TARGETS.some(function(t){return t.status==="drill-ready";})}
+    ];
+    $("checklist").innerHTML = items.map(function(i){
+      return '<li><input type="checkbox" disabled '+(i.done?"checked":"")+'><span style="'+(i.done?"text-decoration:line-through;color:var(--muted)":"")+'">'+i.label+'</span></li>';
+    }).join("");
+    var pct = Math.round(rev/TARGETS.length*100);
+    $("progFill").style.width = pct+"%";
+    $("progLabel").textContent = rev+" of "+TARGETS.length+" targets reviewed — "+pct+"%";
+  }
+
+  // ---------- Charts (canvas) ----------
+  function setupCanvas(c){
+    var dpr = window.devicePixelRatio||1, w=c.clientWidth, h=c.clientHeight;
+    c.width=w*dpr; c.height=h*dpr;
+    var ctx=c.getContext("2d"); ctx.scale(dpr,dpr);
+    return {ctx:ctx,w:w,h:h};
+  }
+  function renderBar(list){
+    var c=$("barChart"), s=setupCanvas(c), ctx=s.ctx;
+    var data=TARGETS.slice().sort(function(a,b){return b.grade-a.grade;});
+    var maxG=Math.max.apply(null,TARGETS.map(function(t){return t.grade;}));
+    var padL=34,padB=22,padT=10,W=s.w,H=s.h;
+    var bw=(W-padL-10)/data.length;
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle="#8a7a68";ctx.font="10px Georgia";ctx.textAlign="right";
+    [0.5,1.0,1.5].forEach(function(g){
+      var y=padT+(H-padT-padB)*(1-g/(maxG*1.1));
+      ctx.fillText(g.toFixed(1)+"%",padL-4,y+3);
+      ctx.strokeStyle="#e2d6bd";ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(W-6,y);ctx.stroke();
+    });
+    var cy=padT+(H-padT-padB)*(1-state.cutoff/(maxG*1.1));
+    ctx.strokeStyle="#b03a2e";ctx.setLineDash([5,4]);ctx.beginPath();ctx.moveTo(padL,cy);ctx.lineTo(W-6,cy);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle="#b03a2e";ctx.textAlign="left";ctx.fillText("cut-off "+state.cutoff.toFixed(2)+"%",padL+4,cy-5);
+    ctx.textAlign="center";
+    data.forEach(function(t,i){
+      var x=padL+i*bw+3, bh=(H-padT-padB)*(t.grade/(maxG*1.1)), y=H-padB-bh;
+      ctx.fillStyle=qualifies(t)?"#b87333":"#cdbfa5";
+      ctx.fillRect(x,y,bw-6,bh);
+      ctx.fillStyle= state.selected===t.id ? "#2e2419" : "#8a7a68";
+      ctx.fillText(t.id,x+(bw-6)/2,H-6);
+    });
+  }
+  var scatterPts=[];
+  function renderScatter(list){
+    var c=$("scatter"), s=setupCanvas(c), ctx=s.ctx;
+    var padL=38,padB=24,padT=10,W=s.w,H=s.h;
+    var maxT=Math.max.apply(null,TARGETS.map(function(t){return t.tonnage;}));
+    var maxG=Math.max.apply(null,TARGETS.map(function(t){return t.grade;}));
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle="#8a7a68";ctx.font="10px Georgia";
+    ctx.textAlign="center";
+    for(var gx=0;gx<=maxT;gx+=20){var px=padL+(W-padL-10)*(gx/(maxT*1.1));ctx.fillText(gx+"Mt",px,H-8);}
+    ctx.textAlign="right";
+    [0.5,1.0,1.5].forEach(function(g){var py=padT+(H-padT-padB)*(1-g/(maxG*1.1));ctx.fillText(g.toFixed(1)+"%",padL-4,py+3);});
+    var cy=padT+(H-padT-padB)*(1-state.cutoff/(maxG*1.1));
+    ctx.strokeStyle="#b03a2e";ctx.setLineDash([5,4]);ctx.beginPath();ctx.moveTo(padL,cy);ctx.lineTo(W-10,cy);ctx.stroke();ctx.setLineDash([]);
+    scatterPts=[];
+    list.forEach(function(t){
+      var x=padL+(W-padL-10)*(t.tonnage/(maxT*1.1));
+      var y=padT+(H-padT-padB)*(1-t.grade/(maxG*1.1));
+      var r=4+t.prob*7, q=qualifies(t);
+      scatterPts.push({x:x,y:y,r:r,id:t.id});
+      ctx.beginPath();ctx.arc(x,y,r,0,7);
+      ctx.fillStyle=q?"#b87333":"#cdbfa5";
+      ctx.globalAlpha=q?1:0.55;ctx.fill();ctx.globalAlpha=1;
+      ctx.lineWidth= state.selected===t.id?3:1;
+      ctx.strokeStyle= state.selected===t.id?"#2e2419":"#7c4f22";ctx.stroke();
+    });
+    c.onclick=function(ev){
+      var r=c.getBoundingClientRect(),mx=ev.clientX-r.left,my=ev.clientY-r.top;
+      for(var i=0;i<scatterPts.length;i++){var p=scatterPts[i];
+        if(Math.hypot(p.x-mx,p.y-my)<=p.r+3){ selectTarget(p.id); return; }}
+    };
+  }
+
+  // ---------- Table + pagination ----------
+  function statusBadge(st){return '<span class="badge '+(st==="drill-ready"?"drill":st==="on-hold"?"hold":st==="dropped"?"drop":"")+'">'+st+'</span>';}
+  function renderTable(list){
+    var wrap=$("tableWrap");
+    if(!list.length){wrap.innerHTML='<div class="empty">No targets match the current filters.<br>Try clearing the search or widening the cut-off.</div>';}
+    else{
+      var pages=Math.max(1,Math.ceil(list.length/state.pageSize));
+      if(state.page>=pages)state.page=pages-1;
+      var rows=list.slice(state.page*state.pageSize,(state.page+1)*state.pageSize).map(function(t){
+        return '<tr class="'+(qualifies(t)?"qual-row":"")+'">'+
+          '<td><strong>'+t.id+'</strong> '+(qualifies(t)?'<span class="badge qual">above cut-off</span>':'')+'</td>'+
+          '<td>'+t.grade.toFixed(2)+'%</td><td>'+t.tonnage.toFixed(1)+'</td>'+
+          '<td>'+Math.round(t.prob*100)+'%</td><td>'+statusBadge(t.status)+'</td>'+
+          '<td><input type="checkbox" data-rev="'+t.id+'" '+(t.reviewed?"checked":"")+' '+(state.role==="viewer"?"disabled":"")+'></td>'+
+          '<td><button class="flagbtn" data-flag="'+t.id+'" title="flag for review">'+(t.flagged?"🚩":"⚑")+'</button></td>'+
+          '<td><button class="btn ghost" data-open="'+t.id+'">Open</button></td></tr>';
+      }).join("");
+      wrap.innerHTML='<table><thead><tr><th>Target</th><th>Grade</th><th>Tonnage (Mt)</th><th>Prob.</th><th>Status</th><th>Reviewed</th><th>Flag</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
+      $("pgInfo").textContent="Page "+(state.page+1)+" of "+pages;
+      $("prevPg").disabled=state.page===0;
+      $("nextPg").disabled=state.page>=pages-1;
+      wrap.querySelectorAll("[data-rev]").forEach(function(cb){
+        cb.onchange=function(){setReviewed(cb.getAttribute("data-rev"),cb.checked);};
+      });
+      wrap.querySelectorAll("[data-flag]").forEach(function(b){
+        b.onclick=function(){toggleFlag(b.getAttribute("data-flag"));};
+      });
+      wrap.querySelectorAll("[data-open]").forEach(function(b){
+        b.onclick=function(){selectTarget(b.getAttribute("data-open"));};
+      });
+    }
+    if(!list.length){$("pgInfo").textContent="Page 0 of 0";$("prevPg").disabled=true;$("nextPg").disabled=true;}
+  }
+
+  // ---------- Detail panel ----------
+  function selectTarget(id){
+    state.selected=id;
+    var t=TARGETS.find(function(x){return x.id===id;});
+    if(!t)return;
+    $("detailPanel").style.display="block";
+    $("dTitle").textContent=t.id+" — target review card";
+    $("dMeta").innerHTML=
+      '<span>Grade: <strong>'+t.grade.toFixed(2)+'%</strong> '+(qualifies(t)?'<span class="badge qual">above cut-off</span>':'<span class="badge ro">below cut-off</span>')+'</span>'+
+      '<span>Tonnage: <strong>'+t.tonnage.toFixed(1)+' Mt</strong></span>'+
+      '<span>Probability: <strong>'+Math.round(t.prob*100)+'%</strong></span>'+
+      '<span>Status: '+statusBadge(t.status)+'</span>'+
+      '<span>Note: '+t.note+'</span>';
+    var dis = state.role==="viewer" ? "disabled" : "";
+    $("dActions").innerHTML=
+      '<button class="btn" data-act="drill-ready" '+dis+'>Mark drill-ready</button>'+
+      '<button class="btn" data-act="on-hold" '+dis+'>Put on hold</button>'+
+      '<button class="btn" data-act="dropped" '+dis+'>Drop target</button>'+
+      '<button class="btn ghost" data-act="candidate" '+dis+'>Reset to candidate</button>';
+    $("roNote").style.display = state.role==="viewer" ? "block" : "none";
+    $("dActions").querySelectorAll("[data-act]").forEach(function(b){
+      b.onclick=function(){
+        if(state.role==="viewer")return;
+        t.status=b.getAttribute("data-act"); t.reviewed=true; refresh(false);
+      };
+    });
+    $("detailPanel").scrollIntoView({behavior:"smooth",block:"nearest"});
+    renderBar();renderScatter(filtered());
+  }
+
+  // ---------- State ops ----------
+  function setReviewed(id,v){var t=TARGETS.find(function(x){return x.id===id;});if(t){t.reviewed=v;refresh(false);}}
+  function toggleFlag(id){var t=TARGETS.find(function(x){return x.id===id;});if(t){t.flagged=!t.flagged;refresh(false);}}
+
+  function refresh(redrawCharts){
+    var list=filtered();
+    renderStats(list);renderChecklist();renderTable(list);
+    if(redrawCharts!==false){renderBar();renderScatter(list);}
+    if(state.selected){var t=TARGETS.find(function(x){return x.id===state.selected;});if(t)selectTarget(t.id);}
+  }
+
+  // ---------- Loading / error simulation ----------
+  function showLoading(){
+    appZone.style.display="none";errorZone.innerHTML="";
+    loadingZone.innerHTML='<div class="skeleton"><div class="sk" style="width:40%"></div><div class="sk" style="width:90%"></div><div class="sk" style="width:70%"></div><div class="sk" style="width:85%"></div></div>';
+  }
+  function hideLoading(){
+    loadingZone.innerHTML="";
+    appZone.style.display="block";
+    refresh(true);
+  }
+  function failNow(){
+    state.failed=true;
+    appZone.style.display="none";loadingZone.innerHTML="";
+    errorZone.innerHTML='<div class="errorbox"><h3>⚠ Could not load target data (simulated API failure)</h3><p>The review console could not reach the data service.</p><button class="btn" id="retryBtn">Retry</button></div>';
+    $("retryBtn").onclick=function(){state.failed=false;showLoading();setTimeout(hideLoading,900);};
+  }
+
+  // ---------- Events ----------
+  var deb=null;
+  $("search").addEventListener("input",function(){
+    clearTimeout(deb);
+    deb=setTimeout(function(){state.search=$("search").value;state.page=0;refresh(false);},300);
+  });
+  $("statusFilter").addEventListener("change",function(){state.statusFilter=$("statusFilter").value;state.page=0;refresh(false);});
+  $("flaggedOnly").addEventListener("change",function(){state.flaggedOnly=$("flaggedOnly").checked;state.page=0;refresh(false);});
+  $("cutoff").addEventListener("input",function(){
+    state.cutoff=parseFloat($("cutoff").value);
+    $("cutoffVal").textContent=state.cutoff.toFixed(2)+"%";
+    state.page=0;
+    refresh(true);   // instant re-rank + re-highlight
+  });
+  $("prevPg").onclick=function(){if(state.page>0){state.page--;refresh(false);}};
+  $("nextPg").onclick=function(){state.page++;refresh(false);};
+  $("roleSel").addEventListener("change",function(){
+    state.role=$("roleSel").value;
+    var b=$("roleBadge");
+    b.textContent= state.role==="geo" ? "Geologist · can act" : "Viewer · read-only";
+    b.className="badge"+(state.role==="geo"?"":" ro");
+    refresh(false);
+  });
+  $("failBtn").onclick=failNow;
+  window.addEventListener("resize",function(){renderBar();renderScatter(filtered());});
+
+  // ---------- Init ----------
+  showLoading();
+  setTimeout(hideLoading,1100);
+})();
+</script>
+</body>
+</html>
